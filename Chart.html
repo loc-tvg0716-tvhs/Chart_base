@@ -2,548 +2,133 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1,maximum-scale=1"
-  />
-  <title>Lark Base – Radar (Spider) Chart Extension</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lark Base – Radar Chart (Aggregate)</title>
   <style>
-    :root{
-      --bg:#0b0c0f; --panel:#111318; --text:#eef2ff; --muted:#98a2b3; --accent:#7c3aed;
-      --border:#23262d; --chip:#1b1f2a; --chipText:#cbd5e1;
-    }
-    @media (prefers-color-scheme: light){
-      :root{
-        --bg:#ffffff; --panel:#ffffff; --text:#0b1220; --muted:#445168; --accent:#6d28d9;
-        --border:#e5e7eb; --chip:#f3f4f6; --chipText:#111827;
-      }
-    }
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial}
-    .wrap{display:grid;grid-template-columns: 320px 1fr;height:100%}
-    .panel{background:var(--panel);border-right:1px solid var(--border);padding:16px;overflow:auto}
-    .panel h2{margin:4px 0 12px;font-size:16px}
-    .sec{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}
-    .sec h3{margin:0 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-    label{display:block;margin:8px 0 4px;color:var(--muted)}
-    select, input[type="text"], input[type="number"]{
-      width:100%;padding:8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text)
-    }
-    .multi{min-height:72px}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-    button{
-      padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--chip);
-      color:var(--chipText);cursor:pointer
-    }
-    button.primary{background:var(--accent);color:#fff;border-color:transparent}
-    .chip{display:inline-flex;align-items:center;gap:6px;background:var(--chip);color:var(--chipText);
-      border-radius:999px;padding:4px 8px;margin:4px 4px 0 0;font-size:12px;border:1px solid var(--border)}
-    .grid{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center}
-    .footer{color:var(--muted);font-size:12px;margin-top:8px}
-    #chart{height:100%;width:100%}
-    .chart{position:relative}
-    .notice{color:var(--muted);font-size:12px;margin-top:6px}
-    details summary{cursor:pointer;color:var(--muted);margin-bottom:6px}
-    .switch{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    html,body {height:100%;margin:0;font:14px system-ui;}
+    #chart {width:100%;height:100%;}
+    .panel {position:absolute;top:10px;left:10px;background:#fff;padding:10px;
+            border:1px solid #ccc;border-radius:8px;z-index:10;max-width:300px;}
+    label {display:block;margin-top:8px;font-size:13px;}
+    select,input {width:100%;padding:6px;margin-top:4px;}
+    button {margin-top:10px;padding:6px 10px;}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <aside class="panel">
-      <h2>Radar Chart – Lark Base</h2>
+  <div class="panel">
+    <label>Category Field (Text/SingleSelect)</label>
+    <select id="catField"></select>
 
-      <div class="sec">
-        <h3>Dữ liệu</h3>
-        <div class="row">
-          <div>
-            <label>Bảng (Table) đang mở</label>
-            <div class="chip" id="tableName">—</div>
-          </div>
-          <div>
-            <label>View</label>
-            <div class="chip" id="viewName">—</div>
-          </div>
-        </div>
+    <label>Axis Fields (Number, chọn nhiều)</label>
+    <select id="axisFields" multiple size="6"></select>
 
-        <label>Trường nhãn (Label – thường là cột tên)</label>
-        <select id="labelField"></select>
+    <label>Aggregate</label>
+    <select id="agg">
+      <option value="avg">Average</option>
+      <option value="sum">Sum</option>
+      <option value="max">Max</option>
+      <option value="min">Min</option>
+      <option value="median">Median</option>
+    </select>
 
-        <label>Trục (Axis) – chọn nhiều số liệu (Number)</label>
-        <select id="axisFields" multiple class="multi"></select>
-
-        <label>Chế độ series</label>
-        <select id="seriesMode">
-          <option value="record">Mỗi record là 1 series</option>
-          <option value="group">Gom theo 1 trường & tổng hợp</option>
-        </select>
-
-        <div id="groupWrap" style="display:none">
-          <label>Trường gom nhóm (Text/Single Select)</label>
-          <select id="groupField"></select>
-
-          <label>Hàm tổng hợp</label>
-          <select id="agg">
-            <option value="avg">Trung bình (AVG)</option>
-            <option value="sum">Tổng (SUM)</option>
-            <option value="max">Lớn nhất (MAX)</option>
-            <option value="min">Nhỏ nhất (MIN)</option>
-            <option value="median">Trung vị (MEDIAN)</option>
-          </select>
-        </div>
-
-        <div class="btns">
-          <button class="primary" id="btnLoad">Nạp dữ liệu</button>
-          <button id="btnRefresh">Làm mới</button>
-        </div>
-        <div class="notice">Dùng các filter/sort/group của View hiện tại trong Base; extension sẽ tôn trọng những cài đặt đó.</div>
-      </div>
-
-      <div class="sec">
-        <h3>Thang đo & hiển thị</h3>
-        <div class="switch">
-          <label><input type="checkbox" id="normalize" checked /> Chuẩn hoá 0–100</label>
-          <label><input type="checkbox" id="showValue" /> Hiển thị nhãn giá trị</label>
-          <label><input type="checkbox" id="areaFill" checked /> Tô vùng (area)</label>
-          <label><input type="checkbox" id="smooth" /> Làm mượt</label>
-        </div>
-        <div class="row">
-          <div>
-            <label>Kiểu radar</label>
-            <select id="shape">
-              <option value="polygon">Polygon</option>
-              <option value="circle">Circle</option>
-            </select>
-          </div>
-          <div>
-            <label>Số vòng tròn (splitNumber)</label>
-            <input id="splitNumber" type="number" value="5" min="3" max="12"/>
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label>Độ đậm nét (lineWidth)</label>
-            <input id="lineWidth" type="number" value="2" min="1" max="6"/>
-          </div>
-          <div>
-            <label>Độ mờ vùng (areaOpacity 0–1)</label>
-            <input id="areaOpacity" type="number" value="0.2" min="0" max="1" step="0.05"/>
-          </div>
-        </div>
-      </div>
-
-      <div class="sec">
-        <h3>Xuất/Nhập</h3>
-        <div class="btns">
-          <button id="btnExportPNG">Xuất PNG</button>
-          <button id="btnExportJSON">Tải config JSON</button>
-          <label class="btn">
-            <input id="importJSON" type="file" accept="application/json" style="display:none">Nhập config
-          </label>
-          <button id="btnReset">Reset cấu hình</button>
-        </div>
-        <div class="footer">Cấu hình sẽ được lưu trong localStorage của trình duyệt.</div>
-      </div>
-    </aside>
-
-    <main class="chart">
-      <div id="chart"></div>
-    </main>
+    <button id="btnRender">Vẽ biểu đồ</button>
   </div>
 
-  <!-- ECharts (UMD) -->
+  <div id="chart"></div>
+
+  <!-- ECharts -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <!-- Base JS SDK (ESM) -->
+  <!-- Lark Base SDK -->
   <script type="module">
-    import {
-      bitable,
-      FieldType
-    } from "https://cdn.jsdelivr.net/npm/@lark-base-open/js-sdk@0.5.0/dist/index.mjs";
+    import { bitable, FieldType } from "https://cdn.jsdelivr.net/npm/@lark-base-open/js-sdk@0.5.0/dist/index.mjs";
 
-    // ===== Helpers =====
-    const $ = (id)=>document.getElementById(id);
-    const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
-    const chunk = (arr, size)=>arr.reduce((acc,_,i)=> i%size? acc: [...acc, arr.slice(i, i+size)], []);
-    const median = (xs)=>{ const a=[...xs].sort((m,n)=>m-n); const mid=Math.floor(a.length/2); return a.length%2? a[mid] : (a[mid-1]+a[mid])/2; };
+    const $ = id => document.getElementById(id);
+    let chart = echarts.init($("chart"));
 
-    const cfgKey = "larkbase_radar_cfg_v1";
-    const defaultCfg = {
-      labelField: null,
-      axisFields: [],
-      seriesMode: "record",
-      groupField: null,
-      agg: "avg",
-      normalize: true,
-      showValue: false,
-      areaFill: true,
-      smooth: false,
-      shape: "polygon",
-      splitNumber: 5,
-      lineWidth: 2,
-      areaOpacity: 0.2
-    };
-
-    let chart;
-    let table, view, tableMeta;
-    let numberFields=[], textLikeFields=[];
-    let recordIds=[];
-
-    // ===== Init =====
-    async function init(){
-      table = await bitable.base.getActiveTable();
-      tableMeta = await table.getMeta();
-      const name = await table.getName();
-      $("tableName").textContent = name;
-
-      // Lấy GridView đang active (nếu view khác kiểu, ta vẫn cố gắng lấy meta & ids)
-      // Ở đây ta đọc getVisibleRecordIdList từ GridView khi có thể.
-      try{
-        // Không có API getActiveView trực tiếp, nhưng có thể lấy từ UI module; ở đây dùng "table.getViewById" với id có sẵn trên trang.
-        // Đơn giản hơn: thử duyệt các viewId hiển thị trong UI module (bản SDK hiện tại chưa expose list view => fallback: lấy GridView đầu tiên)
-        // Ta sẽ lấy từ Base (nếu có) hoặc rơi xuống fallback bằng .getFieldMetaList (không ảnh hưởng logic lấy record theo table).
-      }catch(e){/* ignore */}
-      // Fallback: giả định người dùng đang ở GridView đầu tiên
-      // -> tìm GridView qua View module nếu có, hoặc bỏ qua và dùng table.getRecordList (có thể nặng).
-      try{
-        // Thử lấy một GridView qua id hiển thị trong DOM host – nếu không có, ta sẽ gọi table.getViewById với một id hợp lệ.
-        // Để đơn giản, khi không có view, ta sẽ dùng recordIds = await table.getRecordIdList() (nếu SDK hỗ trợ), hoặc getRecordList map id.
-        view = null; // sẽ set sau khi cần
-      }catch(e){/* ignore */}
-
-      // Liệt kê field
+    async function init() {
+      const table = await bitable.base.getActiveTable();
       const metas = await table.getFieldMetaList();
-      numberFields = metas.filter(f => f.type === FieldType.Number);
-      textLikeFields = metas.filter(f => [FieldType.Text, FieldType.AutoNumber, FieldType.Url, FieldType.Barcode].includes(f.type) || f.isPrimary || f.type === FieldType.SingleSelect);
 
-      // Render selects
-      renderOptions($("labelField"), textLikeFields.map(f=>({id:f.id,name:f.name})), true);
-      renderOptions($("axisFields"), numberFields.map(f=>({id:f.id,name:f.name})));
-      renderOptions($("groupField"), textLikeFields.map(f=>({id:f.id,name:f.name})), true);
+      // Category field options
+      const catOptions = metas.filter(f => 
+        [FieldType.Text, FieldType.SingleSelect].includes(f.type)
+      );
+      $("catField").innerHTML = catOptions.map(f => 
+        `<option value="${f.id}">${f.name}</option>`).join("");
 
-      // Load cfg
-      const saved = loadCfg();
-      applyCfg(saved);
+      // Axis field options (numbers)
+      const numOptions = metas.filter(f => f.type === FieldType.Number);
+      $("axisFields").innerHTML = numOptions.map(f => 
+        `<option value="${f.id}">${f.name}</option>`).join("");
 
-      // Wire events
-      $("seriesMode").addEventListener("change", onSeriesModeChange);
-      $("btnLoad").addEventListener("click", reload);
-      $("btnRefresh").addEventListener("click", render);
-      $("btnExportPNG").addEventListener("click", exportPNG);
-      $("btnExportJSON").addEventListener("click", exportJSON);
-      $("importJSON").addEventListener("change", importJSON);
-      $("btnReset").addEventListener("click", ()=>{ localStorage.removeItem(cfgKey); applyCfg(defaultCfg); });
-
-      onSeriesModeChange();
-      await reload();
-      window.addEventListener("resize", ()=> chart && chart.resize());
+      $("btnRender").onclick = () => render(table);
     }
 
-    function renderOptions(select, items, allowEmpty=false){
-      select.innerHTML = "";
-      if(allowEmpty){
-        const o = document.createElement("option");
-        o.value = ""; o.textContent = "— Chọn —";
-        select.appendChild(o);
-      }
-      for(const it of items){
-        const o = document.createElement("option");
-        o.value = it.id; o.textContent = it.name;
-        select.appendChild(o);
-      }
+    function median(values) {
+      if (!values.length) return 0;
+      const sorted = [...values].sort((a,b)=>a-b);
+      const mid = Math.floor(sorted.length/2);
+      return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid-1]+sorted[mid])/2;
     }
 
-    function loadCfg(){
-      try{ return { ...defaultCfg, ...(JSON.parse(localStorage.getItem(cfgKey)||"{}")) }; }
-      catch{ return defaultCfg; }
-    }
-    function saveCfg(cfg){
-      localStorage.setItem(cfgKey, JSON.stringify(cfg));
-    }
+    async function render(table) {
+      const catId = $("catField").value;
+      const axisIds = Array.from($("axisFields").selectedOptions).map(o=>o.value);
+      const agg = $("agg").value;
 
-    function getCfgFromUI(){
-      const toArray = (sel)=> Array.from(sel.selectedOptions||[]).map(o=>o.value).filter(Boolean);
-      return {
-        labelField: $("labelField").value || null,
-        axisFields: toArray($("axisFields")),
-        seriesMode: $("seriesMode").value,
-        groupField: $("seriesMode").value==="group" ? ($("groupField").value || null) : null,
-        agg: $("agg").value,
-        normalize: $("normalize").checked,
-        showValue: $("showValue").checked,
-        areaFill: $("areaFill").checked,
-        smooth: $("smooth").checked,
-        shape: $("shape").value,
-        splitNumber: +$("splitNumber").value || 5,
-        lineWidth: +$("lineWidth").value || 2,
-        areaOpacity: +$("areaOpacity").value ?? 0.2,
-      };
-    }
-    function applyCfg(cfg){
-      const setSel = (el, val)=>{ if(val==null) { el.value=""; } else { el.value=val; } };
-      setSel($("labelField"), cfg.labelField || "");
-      for(const opt of $("axisFields").options){ opt.selected = cfg.axisFields.includes(opt.value); }
-      $("seriesMode").value = cfg.seriesMode;
-      setSel($("groupField"), cfg.groupField || "");
-      $("agg").value = cfg.agg;
-      $("normalize").checked = cfg.normalize;
-      $("showValue").checked = cfg.showValue;
-      $("areaFill").checked = cfg.areaFill;
-      $("smooth").checked = cfg.smooth;
-      $("shape").value = cfg.shape;
-      $("splitNumber").value = cfg.splitNumber;
-      $("lineWidth").value = cfg.lineWidth;
-      $("areaOpacity").value = cfg.areaOpacity;
-      onSeriesModeChange();
-      saveCfg(cfg);
-    }
-    function onSeriesModeChange(){
-      const mode = $("seriesMode").value;
-      $("groupWrap").style.display = mode==="group" ? "block" : "none";
-    }
-
-    async function reload(){
-      // lấy view name & record ids tuỳ theo khả năng SDK
-      try{
-        // Ưu tiên lấy GridView đang hiển thị: gọi UI module không public -> fallback table.getRecordList
-        // Dùng GridView API nếu người dùng đang mở Grid view
-        // An toàn nhất: dùng table.getRecordList() rồi lấy id
-        let recList = await table.getRecordList();
-        recordIds = recList.map(r => r.id).filter(Boolean);
-        $("viewName").textContent = "—";
-      }catch(e){
-        $("viewName").textContent = "—";
-        recordIds = [];
-      }
-      await render();
-    }
-
-    async function render(){
-      const cfg = getCfgFromUI();
-      if(!cfg.labelField || cfg.axisFields.length===0){
-        toast("Chọn Label field và ít nhất 1 Axis number field");
+      if (!catId || axisIds.length===0) {
+        alert("Chọn Category field và ít nhất 1 Axis field");
         return;
       }
-      saveCfg(cfg);
 
-      const container = $("chart");
-      if(!chart){
-        chart = echarts.init(container, null, {renderer:'canvas'});
+      const catField = await table.getField(catId);
+      const axisFields = await Promise.all(axisIds.map(id => table.getField(id)));
+      const metas = await Promise.all(axisIds.map(id => table.getFieldMetaById(id)));
+      const axisNames = metas.map(m=>m.name);
+
+      // Lấy toàn bộ record ID
+      const recs = await table.getRecordList();
+      const groups = {};
+
+      for (let r of recs) {
+        const cat = (await catField.getValue(r.id)) || "(empty)";
+        if (!groups[cat]) groups[cat] = [];
+
+        const vals = [];
+        for (let f of axisFields) {
+          const v = await f.getValue(r.id);
+          vals.push(Number(v)||0);
+        }
+        groups[cat].push(vals);
       }
 
-      $("btnRefresh").disabled = true;
-      try{
-        // 1) Chuẩn bị field instances
-        const labelField = await table.getField(cfg.labelField);
-        const axisFieldInstances = await Promise.all(cfg.axisFields.map(id => table.getField(id)));
-        let groupField = null;
-        if(cfg.seriesMode==="group" && cfg.groupField) groupField = await table.getField(cfg.groupField);
-
-        // 2) Đọc dữ liệu theo batches để tránh nghẽn
-        const ids = recordIds;
-        if(ids.length===0){
-          toast("Không có record nào trong view hiện tại.");
-          chart.clear();
-          return;
+      // Aggregate
+      const series = [];
+      for (let [cat, rows] of Object.entries(groups)) {
+        const aggVals = [];
+        for (let i=0;i<axisIds.length;i++) {
+          const col = rows.map(r=>r[i]);
+          let val=0;
+          if (agg==="avg") val = col.reduce((a,b)=>a+b,0)/col.length;
+          if (agg==="sum") val = col.reduce((a,b)=>a+b,0);
+          if (agg==="max") val = Math.max(...col);
+          if (agg==="min") val = Math.min(...col);
+          if (agg==="median") val = median(col);
+          aggVals.push(val);
         }
-        // Giới hạn series khi 'record' mode để tránh quá nặng
-        const HARD_MAX_SERIES = 150;
-        const usedIds = (cfg.seriesMode==="record" && ids.length>HARD_MAX_SERIES) ? ids.slice(0,HARD_MAX_SERIES) : ids;
-
-        // Tải label, group, axis values
-        const data = [];
-        const batches = chunk(usedIds, 50);
-        for(const batch of batches){
-          // chạy song song đọc các field
-          const [labels, groups, ...axisVals] = await Promise.all([
-            Promise.all(batch.map(id => labelField.getValue(id))),
-            groupField ? Promise.all(batch.map(id => groupField.getValue(id))) : Promise.resolve(Array(batch.length).fill(null)),
-            ...axisFieldInstances.map(f => Promise.all(batch.map(id => f.getValue(id))))
-          ]);
-          // hợp lại từng record
-          for(let i=0;i<batch.length;i++){
-            const rec = {
-              id: batch[i],
-              label: normalizeLabel(labels[i]),
-              group: normalizeLabel(groups ? groups[i] : null),
-              values: axisVals.map(col => toNum(col[i]))
-            };
-            data.push(rec);
-          }
-          await sleep(0); // nhường luồng
-        }
-
-        // 3) Tính indicator (min/max) và series
-        const axesNames = await Promise.all(cfg.axisFields.map(async id => {
-          const meta = await table.getFieldMetaById(id);
-          return meta.name;
-        }));
-
-        let matrix = []; // mỗi phần tử là {name, values[]}
-        if(cfg.seriesMode==="record"){
-          matrix = data.map(r => ({ name: r.label || r.id, values: r.values, _rid: r.id }));
-        } else {
-          const groupsMap = new Map();
-          for(const r of data){
-            const key = r.group || "(empty)";
-            if(!groupsMap.has(key)) groupsMap.set(key, []);
-            groupsMap.get(key).push(r.values);
-          }
-          for(const [g, rows] of groupsMap){
-            const colAgg = [];
-            for(let j=0;j<cfg.axisFields.length;j++){
-              const col = rows.map(v => toNum(v[j])).filter(v => Number.isFinite(v));
-              if(col.length===0){ colAgg.push(0); continue; }
-              switch(cfg.agg){
-                case "sum": colAgg.push(col.reduce((a,b)=>a+b,0)); break;
-                case "max": colAgg.push(Math.max(...col)); break;
-                case "min": colAgg.push(Math.min(...col)); break;
-                case "median": colAgg.push(median(col)); break;
-                default: colAgg.push(col.reduce((a,b)=>a+b,0)/col.length);
-              }
-            }
-            matrix.push({ name: String(g), values: colAgg, _rid: null });
-          }
-        }
-
-        // Tính min/max mỗi trục
-        const mins = Array(cfg.axisFields.length).fill(+Infinity);
-        const maxs = Array(cfg.axisFields.length).fill(-Infinity);
-        for(const row of matrix){
-          row.values.forEach((v, j) => {
-            if(Number.isFinite(v)){
-              if(v<mins[j]) mins[j]=v;
-              if(v>maxs[j]) maxs[j]=v;
-            }
-          });
-        }
-        const indicators = axesNames.map((name, j) => ({
-          name,
-          max: cfg.normalize ? 100 : (Number.isFinite(maxs[j]) ? (maxs[j]===mins[j]? maxs[j]||1 : maxs[j]) : 1),
-          min: cfg.normalize ? 0 : (Number.isFinite(mins[j]) ? mins[j] : 0)
-        }));
-
-        // Ánh xạ dữ liệu thành 0-100 nếu normalize
-        const seriesData = matrix.map(row => {
-          const vals = row.values.map((v, j) => {
-            if(!Number.isFinite(v)) return 0;
-            if(cfg.normalize){
-              const min = mins[j], max = maxs[j];
-              if(!Number.isFinite(min) || !Number.isFinite(max) || max===min) return 0;
-              return ((v - min) / (max - min)) * 100;
-            }
-            return v;
-          });
-          return { name: row.name, value: vals, _rid: row._rid };
-        });
-
-        // 4) ECharts option
-        const option = {
-          tooltip: {
-            trigger: "item",
-            confine: true,
-            formatter: (p) => {
-              const lines = [`<b>${p.name}</b>`];
-              p.value.forEach((v, j) => lines.push(`${escapeHtml(indicators[j].name)}: <b>${fmtNum(v)}</b>`));
-              return lines.join("<br/>");
-            }
-          },
-          legend: {
-            type: "scroll",
-            top: 8,
-            textStyle: { color: getComputedStyle(document.documentElement).getPropertyValue("--text") }
-          },
-          radar: {
-            shape: $("shape").value,
-            indicator: indicators,
-            splitNumber: +$("splitNumber").value || 5,
-            axisName: { color: getCss("--muted") },
-            splitLine: { lineStyle: { opacity: .4 } },
-            splitArea: { areaStyle: { opacity: 0.04 } },
-            axisLine: { lineStyle: { opacity: .5 } }
-          },
-          series: [{
-            type: "radar",
-            symbol: "circle",
-            symbolSize: 3,
-            lineStyle: { width: +$("lineWidth").value || 2 },
-            label: { show: $("showValue").checked, formatter: ({value}) => value.map(v=>fmtNum(v)).join(" / ") },
-            areaStyle: $("areaFill").checked ? { opacity: +$("areaOpacity").value ?? 0.2 } : undefined,
-            smooth: $("smooth").checked,
-            data: seriesData
-          }]
-        };
-
-        chart.setOption(option, true);
-        chart.off("click");
-        chart.on("click", (ev) => {
-          // Nếu kích vào series của 1 record, cố gắng mở record (nếu SDK hỗ trợ), nếu không thì copy id
-          const rid = ev?.data?._rid;
-          if(rid){
-            // API openRecord chưa public; fallback: copy id
-            navigator.clipboard?.writeText(rid).catch(()=>{});
-            toast("Đã copy Record ID: " + rid);
-          }
-        });
-
-      }catch(err){
-        console.error(err);
-        toast("Lỗi khi render chart. Mở console để xem chi tiết.");
-      }finally{
-        $("btnRefresh").disabled = false;
+        series.push({name:cat,value:aggVals});
       }
+
+      const indicators = axisNames.map(name=>({name, max:100}));
+      chart.setOption({
+        tooltip:{},
+        legend:{top:0},
+        radar:{indicator:indicators},
+        series:[{type:"radar",data:series}]
+      });
     }
 
-    // ===== Utilities =====
-    function toNum(v){
-      if(v==null) return 0;
-      if(typeof v === "number") return v;
-      if(typeof v === "string" && v.trim()==="") return 0;
-      const n = Number(v);
-      return Number.isFinite(n) ? n : 0;
-    }
-    function normalizeLabel(v){
-      if(v==null) return "";
-      if(typeof v === "object" && v.text) return v.text; // SingleSelect: {id,text}
-      return String(v);
-    }
-    function escapeHtml(s){ return String(s).replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m])); }
-    function fmtNum(n){ return Number(n).toLocaleString(undefined,{maximumFractionDigits:2}); }
-    function getCss(varName){ return getComputedStyle(document.documentElement).getPropertyValue(varName) }
-
-    function toast(msg){
-      // đơn giản: alert thay cho toast thực
-      console.info("[Radar]", msg);
-    }
-
-    async function exportPNG(){
-      if(!chart) return;
-      const url = chart.getDataURL({ pixelRatio: 2, backgroundColor: getCss("--bg") || "#fff" });
-      const a = document.createElement("a");
-      a.href = url; a.download = "larkbase-radar.png"; a.click();
-    }
-    function exportJSON(){
-      const cfg = getCfgFromUI();
-      const blob = new Blob([JSON.stringify(cfg, null, 2)], {type:"application/json"});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = "larkbase-radar-config.json"; a.click();
-      setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-    }
-    function importJSON(ev){
-      const file = ev.target.files?.[0]; if(!file) return;
-      const fr = new FileReader();
-      fr.onload = ()=> {
-        try{
-          const obj = JSON.parse(fr.result);
-          applyCfg({ ...defaultCfg, ...obj });
-        }catch(e){ toast("File không hợp lệ"); }
-      };
-      fr.readAsText(file);
-    }
-
-    // Start
-    init().catch(err=>{
-      console.error(err);
-      toast("Không thể khởi tạo – kiểm tra quyền của Base JS SDK hoặc reload trang.");
-    });
+    init();
   </script>
 </body>
 </html>
